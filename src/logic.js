@@ -1,17 +1,15 @@
 import { ALL_TEAMS, STAGES, BET_AMOUNT } from './data.js'
 
 export function runDraft(rankings, priorityOrder) {
-  const n = priorityOrder.length
-  // Each player gets exactly equal teams — floor(48/n) each
+  const n = (priorityOrder || []).length
+  if (n === 0) return {}
   const teamsEach = Math.floor(48 / n)
   const totalToAssign = teamsEach * n
-
   const assigned = {}
   const taken = new Set()
   priorityOrder.forEach(p => { assigned[p] = [] })
   const queue = [...priorityOrder]
   const teamNames = ALL_TEAMS.map(t => t.name)
-
   while (taken.size < totalToAssign && queue.length > 0) {
     const player = queue.shift()
     if (assigned[player].length >= teamsEach) continue
@@ -54,9 +52,9 @@ export function findMicroBet(assignments, match) {
 
 export function calcLeaderboard(players, assignments, matches) {
   const totals = {}
-  players.forEach(p => { totals[p] = 0 })
+  ;(players || []).forEach(p => { totals[p] = 0 })
   ;(matches || []).forEach(m => {
-    const bet = findMicroBet(assignments, m)
+    const bet = findMicroBet(assignments || {}, m)
     if (!bet || !m.winner) return
     if (m.winner === bet.team1) {
       totals[bet.owner1] = (totals[bet.owner1] || 0) + bet.betAmt
@@ -69,11 +67,10 @@ export function calcLeaderboard(players, assignments, matches) {
   return totals
 }
 
-// calcDebts: returns array of { from, to, amount } — netted per pair, settled bets only
 export function calcDebts(players, assignments, matches) {
   const pairMap = {}
   ;(matches || []).forEach(m => {
-    const bet = findMicroBet(assignments, m)
+    const bet = findMicroBet(assignments || {}, m)
     if (!bet || !m.winner) return
     const winner = m.winner === bet.team1 ? bet.owner1 : m.winner === bet.team2 ? bet.owner2 : null
     if (!winner) return
@@ -96,7 +93,6 @@ export function calcDebts(players, assignments, matches) {
   return debts.sort((a, b) => b.amount - a.amount)
 }
 
-// Cryptographically fair shuffle
 export function fairShuffle(arr) {
   const array = [...arr]
   const randomValues = new Uint32Array(array.length)
