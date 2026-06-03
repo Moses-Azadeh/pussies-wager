@@ -1,52 +1,76 @@
+// Official FIFA World Cup 2026 teams and groups (verified from FIFA standings)
 export const ALL_TEAMS = [
-  { name: "Argentina", flag: "🇦🇷", group: "A" },
-  { name: "France", flag: "🇫🇷", group: "B" },
-  { name: "England", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", group: "C" },
-  { name: "Brazil", flag: "🇧🇷", group: "D" },
-  { name: "Spain", flag: "🇪🇸", group: "E" },
-  { name: "Germany", flag: "🇩🇪", group: "F" },
-  { name: "Portugal", flag: "🇵🇹", group: "G" },
-  { name: "Netherlands", flag: "🇳🇱", group: "H" },
-  { name: "Belgium", flag: "🇧🇪", group: "A" },
-  { name: "Croatia", flag: "🇭🇷", group: "B" },
-  { name: "Uruguay", flag: "🇺🇾", group: "C" },
-  { name: "Switzerland", flag: "🇨🇭", group: "D" },
-  { name: "USA", flag: "🇺🇸", group: "E" },
-  { name: "Mexico", flag: "🇲🇽", group: "F" },
-  { name: "Morocco", flag: "🇲🇦", group: "G" },
-  { name: "Senegal", flag: "🇸🇳", group: "H" },
-  { name: "Japan", flag: "🇯🇵", group: "A" },
-  { name: "South Korea", flag: "🇰🇷", group: "B" },
-  { name: "Colombia", flag: "🇨🇴", group: "C" },
-  { name: "Denmark", flag: "🇩🇰", group: "D" },
-  { name: "Austria", flag: "🇦🇹", group: "E" },
-  { name: "Turkey", flag: "🇹🇷", group: "F" },
-  { name: "Ecuador", flag: "🇪🇨", group: "G" },
-  { name: "Poland", flag: "🇵🇱", group: "H" },
-  { name: "Australia", flag: "🇦🇺", group: "A" },
-  { name: "Serbia", flag: "🇷🇸", group: "B" },
-  { name: "Ukraine", flag: "🇺🇦", group: "C" },
-  { name: "Hungary", flag: "🇭🇺", group: "D" },
-  { name: "Czech Republic", flag: "🇨🇿", group: "E" },
-  { name: "Wales", flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", group: "F" },
-  { name: "Cameroon", flag: "🇨🇲", group: "G" },
-  { name: "Ghana", flag: "🇬🇭", group: "H" },
-  { name: "Tunisia", flag: "🇹🇳", group: "A" },
-  { name: "Nigeria", flag: "🇳🇬", group: "B" },
-  { name: "Algeria", flag: "🇩🇿", group: "C" },
-  { name: "Egypt", flag: "🇪🇬", group: "D" },
-  { name: "Iran", flag: "🇮🇷", group: "E" },
-  { name: "Saudi Arabia", flag: "🇸🇦", group: "F" },
-  { name: "Qatar", flag: "🇶🇦", group: "G" },
-  { name: "Bolivia", flag: "🇧🇴", group: "H" },
-  { name: "Venezuela", flag: "🇻🇪", group: "A" },
-  { name: "Canada", flag: "🇨🇦", group: "B" },
-  { name: "Honduras", flag: "🇭🇳", group: "C" },
-  { name: "Jamaica", flag: "🇯🇲", group: "D" },
-  { name: "Costa Rica", flag: "🇨🇷", group: "E" },
-  { name: "Panama", flag: "🇵🇦", group: "F" },
-  { name: "Chile", flag: "🇨🇱", group: "G" },
-  { name: "Peru", flag: "🇵🇪", group: "H" },
+  // GROUP A
+  { name: "Mexico",               flag: "🇲🇽", group: "A" },
+  { name: "South Africa",         flag: "🇿🇦", group: "A" },
+  { name: "South Korea",          flag: "🇰🇷", group: "A" },
+  { name: "Czechia",              flag: "🇨🇿", group: "A" },
+
+  // GROUP B
+  { name: "Canada",               flag: "🇨🇦", group: "B" },
+  { name: "Bosnia-Herzegovina",   flag: "🇧🇦", group: "B" },
+  { name: "Qatar",                flag: "🇶🇦", group: "B" },
+  { name: "Switzerland",          flag: "🇨🇭", group: "B" },
+
+  // GROUP C
+  { name: "Brazil",               flag: "🇧🇷", group: "C" },
+  { name: "Morocco",              flag: "🇲🇦", group: "C" },
+  { name: "Haiti",                flag: "🇭🇹", group: "C" },
+  { name: "Scotland",             flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", group: "C" },
+
+  // GROUP D
+  { name: "USA",                  flag: "🇺🇸", group: "D" },
+  { name: "Paraguay",             flag: "🇵🇾", group: "D" },
+  { name: "Australia",            flag: "🇦🇺", group: "D" },
+  { name: "Turkey",               flag: "🇹🇷", group: "D" },
+
+  // GROUP E
+  { name: "Germany",              flag: "🇩🇪", group: "E" },
+  { name: "Curacao",              flag: "🇨🇼", group: "E" },
+  { name: "Ivory Coast",          flag: "🇨🇮", group: "E" },
+  { name: "Ecuador",              flag: "🇪🇨", group: "E" },
+
+  // GROUP F
+  { name: "Netherlands",          flag: "🇳🇱", group: "F" },
+  { name: "Japan",                flag: "🇯🇵", group: "F" },
+  { name: "Sweden",               flag: "🇸🇪", group: "F" },
+  { name: "Tunisia",              flag: "🇹🇳", group: "F" },
+
+  // GROUP G
+  { name: "Belgium",              flag: "🇧🇪", group: "G" },
+  { name: "Egypt",                flag: "🇪🇬", group: "G" },
+  { name: "Iran",                 flag: "🇮🇷", group: "G" },
+  { name: "New Zealand",          flag: "🇳🇿", group: "G" },
+
+  // GROUP H
+  { name: "Spain",                flag: "🇪🇸", group: "H" },
+  { name: "Cape Verde",           flag: "🇨🇻", group: "H" },
+  { name: "Saudi Arabia",         flag: "🇸🇦", group: "H" },
+  { name: "Uruguay",              flag: "🇺🇾", group: "H" },
+
+  // GROUP I
+  { name: "France",               flag: "🇫🇷", group: "I" },
+  { name: "Senegal",              flag: "🇸🇳", group: "I" },
+  { name: "Iraq",                 flag: "🇮🇶", group: "I" },
+  { name: "Norway",               flag: "🇳🇴", group: "I" },
+
+  // GROUP J
+  { name: "Argentina",            flag: "🇦🇷", group: "J" },
+  { name: "Algeria",              flag: "🇩🇿", group: "J" },
+  { name: "Austria",              flag: "🇦🇹", group: "J" },
+  { name: "Jordan",               flag: "🇯🇴", group: "J" },
+
+  // GROUP K
+  { name: "Portugal",             flag: "🇵🇹", group: "K" },
+  { name: "DR Congo",             flag: "🇨🇩", group: "K" },
+  { name: "Uzbekistan",           flag: "🇺🇿", group: "K" },
+  { name: "Colombia",             flag: "🇨🇴", group: "K" },
+
+  // GROUP L
+  { name: "England",              flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", group: "L" },
+  { name: "Croatia",              flag: "🇭🇷", group: "L" },
+  { name: "Ghana",                flag: "🇬🇭", group: "L" },
+  { name: "Panama",               flag: "🇵🇦", group: "L" },
 ]
 
 export const TEAM_MAP = Object.fromEntries(ALL_TEAMS.map(t => [t.name, t]))

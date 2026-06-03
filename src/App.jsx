@@ -8,11 +8,54 @@ const LOCAL_NAME_KEY  = 'wager_my_name'
 const LOCAL_PIN_KEY   = 'wager_my_pin'
 
 // ── Team name aliases (AI may return variants) ────────────────────────────────
+// Covers all official FIFA 2026 teams and common AI/API name variants
 const TEAM_ALIASES = {
-  'korea republic': 'South Korea', 'republic of korea': 'South Korea',
-  'united states': 'USA', 'united states of america': 'USA', 'us': 'USA',
-  'czechia': 'Czech Republic',
-  "côte d'ivoire": 'Ivory Coast', 'ivory coast': 'Ivory Coast',
+  // South Korea
+  'korea republic': 'South Korea',
+  'republic of korea': 'South Korea',
+  'korea rep.': 'South Korea',
+  'korea rep': 'South Korea',
+
+  // USA
+  'united states': 'USA',
+  'united states of america': 'USA',
+  'u.s.a.': 'USA',
+  'u.s.': 'USA',
+
+  // Bosnia
+  'bosnia and herzegovina': 'Bosnia-Herzegovina',
+  'bosnia & herzegovina': 'Bosnia-Herzegovina',
+  'bosnia': 'Bosnia-Herzegovina',
+
+  // Ivory Coast
+  "côte d'ivoire": 'Ivory Coast',
+  "cote d'ivoire": 'Ivory Coast',
+  'cote divoire': 'Ivory Coast',
+
+  // Turkey
+  'türkiye': 'Turkey',
+  'turkiye': 'Turkey',
+
+  // Curacao
+  'curaçao': 'Curacao',
+
+  // DR Congo
+  'congo dr': 'DR Congo',
+  'democratic republic of congo': 'DR Congo',
+  'dr. congo': 'DR Congo',
+  'congo, dr': 'DR Congo',
+  'congo democratic republic': 'DR Congo',
+
+  // Cape Verde
+  'cabo verde': 'Cape Verde',
+
+  // Iran
+  'ir iran': 'Iran',
+  'islamic republic of iran': 'Iran',
+
+  // Scotland / England flags
+  'scotland': 'Scotland',
+  'england': 'England',
 }
 function normalise(raw) {
   if (!raw) return raw
