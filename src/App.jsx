@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { ALL_TEAMS, TEAM_MAP, STAGES, PLAYER_COLORS, BET_AMOUNT, MAX_PLAYERS } from './data.js'
-import { runDraft, findMicroBet, calcLeaderboard, calcDebts, fairShuffle } from './logic.js'
+import { runDraft, findMicroBet, findMicroBets, calcLeaderboard, calcDebts, fairShuffle } from './logic.js'
 import { dbGet, dbSet, dbSubscribe, fetchLiveMatches } from './storage.js'
 import { css, Btn, Input, Sel, Card, Badge, Dot, Avatar, LiveDot, SectionHead, Tabs, DragList, MatchCard } from './ui.jsx'
 
@@ -8,11 +8,54 @@ const LOCAL_NAME_KEY  = 'wager_my_name'
 const LOCAL_PIN_KEY   = 'wager_my_pin'
 
 // ── Team name aliases (AI may return variants) ────────────────────────────────
+// Covers all official FIFA 2026 teams and common AI/API name variants
 const TEAM_ALIASES = {
-  'korea republic': 'South Korea', 'republic of korea': 'South Korea',
-  'united states': 'USA', 'united states of america': 'USA', 'us': 'USA',
-  'czechia': 'Czech Republic',
-  "côte d'ivoire": 'Ivory Coast', 'ivory coast': 'Ivory Coast',
+  // South Korea
+  'korea republic': 'South Korea',
+  'republic of korea': 'South Korea',
+  'korea rep.': 'South Korea',
+  'korea rep': 'South Korea',
+
+  // USA
+  'united states': 'USA',
+  'united states of america': 'USA',
+  'u.s.a.': 'USA',
+  'u.s.': 'USA',
+
+  // Bosnia
+  'bosnia and herzegovina': 'Bosnia-Herzegovina',
+  'bosnia & herzegovina': 'Bosnia-Herzegovina',
+  'bosnia': 'Bosnia-Herzegovina',
+
+  // Ivory Coast
+  "côte d'ivoire": 'Ivory Coast',
+  "cote d'ivoire": 'Ivory Coast',
+  'cote divoire': 'Ivory Coast',
+
+  // Turkey
+  'türkiye': 'Turkey',
+  'turkiye': 'Turkey',
+
+  // Curacao
+  'curaçao': 'Curacao',
+
+  // DR Congo
+  'congo dr': 'DR Congo',
+  'democratic republic of congo': 'DR Congo',
+  'dr. congo': 'DR Congo',
+  'congo, dr': 'DR Congo',
+  'congo democratic republic': 'DR Congo',
+
+  // Cape Verde
+  'cabo verde': 'Cape Verde',
+
+  // Iran
+  'ir iran': 'Iran',
+  'islamic republic of iran': 'Iran',
+
+  // Scotland / England flags
+  'scotland': 'Scotland',
+  'england': 'England',
 }
 function normalise(raw) {
   if (!raw) return raw
@@ -136,7 +179,7 @@ export default function App() {
   const [screen, setScreen]           = useState('home')
   const [tab, setTab]                 = useState('wagers')
   const [stageFilter, setStageFilter] = useState('all')
-  const [matchForm, setMatchForm]     = useState({ team1:'', team2:'', stage:'r32', winner:'' })
+  const [matchForm, setMatchForm]     = useState({ team1:'', team2:'', stage:'gs', winner:'' })
   const [fetchingLive, setFetchingLive] = useState(false)
   const [liveMsg, setLiveMsg]           = useState('')
   const [confirm, setConfirm]           = useState(null)
@@ -356,19 +399,22 @@ export default function App() {
   const myRank       = sorted.indexOf(myName) + 1
   const isAdmin      = game?.adminName === myName
   const finalMatch   = allMatches.find(m => m.stage === 'f' && m.winner)
-  const tournamentWinner = finalMatch
-    ? Object.entries(game?.assignments || {}).find(([,teams]) => teams.includes(finalMatch.winner))?.[0]
-    : null
+  // All owners of the winning team (could be 2 if duplicated)
+  const tournamentWinners = finalMatch
+    ? Object.entries(game?.assignments || {})
+        .filter(([,teams]) => teams.includes(finalMatch.winner))
+        .map(([p]) => p)
+    : []
+  const tournamentWinner = tournamentWinners[0] || null
   const myBets = allMatches
-    .map(m => ({ match:m, bet: findMicroBet(game?.assignments||{}, m) }))
-    .filter(({ bet }) => bet && (bet.owner1===myName || bet.owner2===myName))
+    .flatMap(m => findMicroBets(game?.assignments||{}, m).map(bet => ({ match:m, bet })))
+    .filter(({ bet }) => bet.owner1===myName || bet.owner2===myName)
   const allBets = allMatches
-    .map(m => ({ match:m, bet: findMicroBet(game?.assignments||{}, m) }))
-    .filter(({ bet }) => bet)
+    .flatMap(m => findMicroBets(game?.assignments||{}, m).map(bet => ({ match:m, bet })))
 
-  // Teams per player — always equal (floor division, remainder unassigned)
-  const teamsEach = game?.players?.length ? Math.floor(48 / game.players.length) : 0
-  const unassignedCount = game?.players?.length ? 48 - (teamsEach * game.players.length) : 0
+  // Teams per player — ceil(48/n), duplicates fill the remainder
+  const teamsEach = game?.players?.length ? Math.ceil(48 / game.players.length) : 0
+  const duplicateCount = game?.players?.length ? (teamsEach * game.players.length) - 48 : 0
 
   // Debts
   const debts = game ? calcDebts(game.players, game.assignments, allMatches) : []
@@ -519,7 +565,7 @@ export default function App() {
             <div className="fade-up">
               <SectionHead title="Lobby"
                 sub={game.players.length >= 2
-                  ? `${game.players.length} players · each gets exactly ${Math.floor(48/game.players.length)} teams · ${48 % game.players.length > 0 ? `${48 % game.players.length} teams unassigned` : 'all 48 teams assigned'}`
+                  ? `${game.players.length} players · each gets ${Math.ceil(48/game.players.length)} teams · all 48 teams assigned · ${(Math.ceil(48/game.players.length)*game.players.length)-48} duplicate${((Math.ceil(48/game.players.length)*game.players.length)-48)!==1?'s':''}`
                   : 'Everyone ranks their teams, then the admin runs the draft.'} />
 
               <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:22 }}>
@@ -595,7 +641,7 @@ export default function App() {
             <div className="fade-up">
 
               {/* Tournament winner banner */}
-              {tournamentWinner && (
+              {tournamentWinners.length > 0 && (
                 <div style={{ marginBottom:16, padding:'14px 18px', borderRadius:14,
                   background:'linear-gradient(135deg,#FFD70018,#FFD70006)',
                   border:'1px solid #FFD70045', display:'flex', alignItems:'center', gap:12 }}>
@@ -603,14 +649,17 @@ export default function App() {
                   <div>
                     <div style={{ fontFamily:'var(--fd)', fontWeight:900, fontSize:13,
                       color:'var(--gold)', letterSpacing:'0.1em', textTransform:'uppercase' }}>
-                      Tournament Winner
+                      Tournament Winner{tournamentWinners.length > 1 ? 's' : ''}
                     </div>
                     <div style={{ fontFamily:'var(--fd)', fontWeight:700, fontSize:20 }}>
-                      {tournamentWinner}
-                      {tournamentWinner===myName && <span style={{ color:'var(--accent)', marginLeft:8, fontSize:13 }}>— That's you! 🎉</span>}
+                      {tournamentWinners.join(' & ')}
+                      {tournamentWinners.includes(myName) && <span style={{ color:'var(--accent)', marginLeft:8, fontSize:13 }}>— That's you! 🎉</span>}
                     </div>
                     <div style={{ fontSize:11, color:'var(--dim)', marginTop:2 }}>
-                      owns {finalMatch.winner} · wins £{(BET_AMOUNT*game.players.length).toFixed(0)} main pot
+                      {tournamentWinners.length > 1
+                        ? `both own ${finalMatch.winner} · split £${(BET_AMOUNT*game.players.length).toFixed(0)} pot`
+                        : `owns ${finalMatch.winner} · wins £${(BET_AMOUNT*game.players.length).toFixed(0)} main pot`
+                      }
                     </div>
                   </div>
                 </div>
@@ -931,7 +980,7 @@ export default function App() {
                     <span style={{ color:'var(--gold)', fontFamily:'var(--fd)', fontWeight:700 }}>Main pot: </span>
                     £{(BET_AMOUNT*game.players.length).toFixed(0)} · owner of the tournament-winning team wins it.
                     Leaderboard shows total including pot where applicable.<br/>
-                    <span style={{ color:'var(--mid)' }}>Micro-bets: R32 10% · R16 20% · QF 30% · SF 40% · Final 60% of £{BET_AMOUNT}</span>
+                    <span style={{ color:'var(--mid)' }}>Micro-bets: GS 10% · R32 20% · R16 30% · QF 40% · SF 50% of £{BET_AMOUNT} · Final winner takes entire pot</span>
                   </div>
                 </div>
               )}
