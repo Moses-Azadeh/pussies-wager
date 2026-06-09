@@ -359,23 +359,25 @@ export default function App() {
     setFetchingLive(true)
     setLiveMsg('Searching for World Cup matches…')
     try {
-      const raw = await fetchLiveMatches()
+      const { matches: raw, unrecognised: proxyUnrecognised } = await fetchLiveMatches()
       const safe = raw.map(m => ({
         ...m,
         team1:  normalise(m.team1),
         team2:  normalise(m.team2),
         winner: m.live ? null : (m.winner ? normalise(m.winner) : null),
       }))
-      const unrecognised = safe.filter(m =>
-        !ALL_TEAMS.find(t => t.name === m.team1) ||
-        !ALL_TEAMS.find(t => t.name === m.team2)
-      )
+      // Check for still-unrecognised teams after normalisation
+      const stillUnrecognised = safe
+        .flatMap(m => [m.team1, m.team2])
+        .filter(name => !ALL_TEAMS.find(t => t.name === name))
+        .filter((v, i, a) => a.indexOf(v) === i) // unique
+      const unrecognised = [...new Set([...(proxyUnrecognised || []), ...stillUnrecognised])]
       await push({ liveMatches: safe, lastLiveFetch: new Date().toISOString() })
       const done = safe.filter(m => m.winner).length
       const live = safe.filter(m => m.live).length
       const withBets = safe.filter(m => findMicroBet(gameRef.current?.assignments || {}, m)).length
       let msg = `✓ ${safe.length} matches — ${done} finished · ${live} live · ${withBets} with wagers`
-      if (unrecognised.length) msg += ` · ⚠ ${unrecognised.length} unrecognised team names`
+      if (unrecognised && unrecognised.length > 0) msg += ` · ⚠ Unrecognised names: ${unrecognised.join(' | ')}`
       setLiveMsg(msg)
     } catch (e) {
       setLiveMsg(`⚠ ${e.message}`)
