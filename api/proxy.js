@@ -54,14 +54,15 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
           'x-api-key': ANTHROPIC_KEY,
           'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'web-search-2025-03-05',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
+          model: 'claude-opus-4-5',
+          max_tokens: 2000,
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
           messages: [{
             role: 'user',
-            content: `Search for the latest FIFA World Cup 2026 match results and upcoming fixtures. Use official FIFA team names. Return ONLY a raw JSON array — no markdown, no backticks, no explanation. Each object: { "team1": string, "team2": string, "stage": one of "r32"/"r16"/"qf"/"sf"/"f", "date": ISO string, "live": boolean (true ONLY if match is right now in-progress), "winner": string or null (MUST be null if live is true — only set when match is 100% finished including AET/penalties) }. Max 40 matches. If the 2026 World Cup has not yet started return [].`
+            content: `Search for the latest FIFA World Cup 2026 match results and upcoming fixtures. Use the exact official FIFA team names. Return ONLY a raw JSON array — no markdown, no backticks, no explanation whatsoever. Each object must have: { "team1": string, "team2": string, "stage": one of "gs" (group stage) / "r32" / "r16" / "qf" / "sf" / "f" (final), "date": ISO string, "live": boolean (true ONLY if the match is happening right now), "winner": string or null (MUST be null if live:true, only set to team name when match is 100% finished including extra time and penalties) }. Include all completed matches and upcoming group stage fixtures. Max 60 matches. If the 2026 World Cup has not yet started return [].`
           }]
         })
       })
