@@ -23,18 +23,17 @@ function cors(res) {
 
 // Map football-data.org team names to our canonical names
 const TEAM_NAME_MAP = {
-  'Korea Republic': 'South Korea',
-  'Bosnia and Herzegovina': 'Bosnia-Herzegovina',
-  "Côte d'Ivoire": 'Ivory Coast',
-  'Cote d\'Ivoire': 'Ivory Coast',
-  'Türkiye': 'Turkey',
+  'Korea Republic': 'South Korea', 'Republic of Korea': 'South Korea',
+  'Bosnia and Herzegovina': 'Bosnia-Herzegovina', 'Bosnia & Herzegovina': 'Bosnia-Herzegovina',
+  "Côte d'Ivoire": 'Ivory Coast', 'Cote d\'Ivoire': 'Ivory Coast',
+  'Türkiye': 'Turkey', 'Turkiye': 'Turkey',
   'Curaçao': 'Curacao',
-  'Congo DR': 'DR Congo',
-  'DR Congo': 'DR Congo',
+  'Congo DR': 'DR Congo', 'Democratic Republic of Congo': 'DR Congo', 'Congo, DR': 'DR Congo',
   'Cabo Verde': 'Cape Verde',
-  'IR Iran': 'Iran',
-  'United States': 'USA',
-  'USA': 'USA',
+  'IR Iran': 'Iran', 'Islamic Republic of Iran': 'Iran',
+  'United States': 'USA', 'United States of America': 'USA', 'USA': 'USA',
+  'Czech Republic': 'Czechia',
+  'Scotland': 'Scotland', 'England': 'England',
 }
 
 function normTeam(name) {
@@ -85,29 +84,53 @@ export default async function handler(req, res) {
       const data = await response.json()
       const rawMatches = data.matches || []
 
+      const WC_TEAMS = new Set([
+        "Mexico","South Africa","South Korea","Czechia",
+        "Canada","Bosnia-Herzegovina","Qatar","Switzerland",
+        "Brazil","Morocco","Haiti","Scotland",
+        "USA","Paraguay","Australia","Turkey",
+        "Germany","Curacao","Ivory Coast","Ecuador",
+        "Netherlands","Japan","Sweden","Tunisia",
+        "Belgium","Egypt","Iran","New Zealand",
+        "Spain","Cape Verde","Saudi Arabia","Uruguay",
+        "France","Senegal","Iraq","Norway",
+        "Argentina","Algeria","Austria","Jordan",
+        "Portugal","DR Congo","Uzbekistan","Colombia",
+        "England","Croatia","Ghana","Panama"
+      ])
+
+      const unrecognised = new Set()
+
       const matches = rawMatches.map(m => {
-        const team1 = normTeam(m.homeTeam?.name || '')
-        const team2 = normTeam(m.awayTeam?.name || '')
-        const status = m.status // SCHEDULED, LIVE, IN_PLAY, PAUSED, FINISHED, POSTPONED
+        const rawHome = m.homeTeam?.name || ''
+        const rawAway = m.awayTeam?.name || ''
+        const team1 = normTeam(rawHome)
+        const team2 = normTeam(rawAway)
+        const status = m.status
         const live = status === 'LIVE' || status === 'IN_PLAY' || status === 'PAUSED'
         const finished = status === 'FINISHED'
         const winner = finished
           ? (m.score?.winner === 'HOME_TEAM' ? team1
             : m.score?.winner === 'AWAY_TEAM' ? team2
-            : null) // DRAW — no winner for our purposes
+            : null)
           : null
 
+        // Track unrecognised names
+        if (rawHome && !WC_TEAMS.has(team1)) unrecognised.add(`"${rawHome}" → "${team1}"`)
+        if (rawAway && !WC_TEAMS.has(team2)) unrecognised.add(`"${rawAway}" → "${team2}"`)
+
         return {
-          team1,
-          team2,
+          team1, team2,
           stage: mapStage(m.stage || m.group || ''),
           date: m.utcDate || new Date().toISOString(),
-          live,
-          winner,
+          live, winner,
         }
       }).filter(m => m.team1 && m.team2)
 
-      return res.status(200).json({ matches })
+      return res.status(200).json({
+        matches,
+        unrecognised: [...unrecognised],
+      })
 
     } catch (e) {
       return res.status(500).json({ error: e.message })
