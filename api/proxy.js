@@ -23,17 +23,19 @@ function cors(res) {
 
 // Map football-data.org team names to our canonical names
 const TEAM_NAME_MAP = {
-  'Korea Republic': 'South Korea', 'Republic of Korea': 'South Korea',
-  'Bosnia and Herzegovina': 'Bosnia-Herzegovina', 'Bosnia & Herzegovina': 'Bosnia-Herzegovina',
-  "Côte d'Ivoire": 'Ivory Coast', 'Cote d\'Ivoire': 'Ivory Coast',
+  'Korea Republic': 'South Korea', 'Republic of Korea': 'South Korea', 'Korea Rep.': 'South Korea', 'Korea Rep': 'South Korea',
+  'Bosnia and Herzegovina': 'Bosnia-Herzegovina', 'Bosnia & Herzegovina': 'Bosnia-Herzegovina', 'Bosnia': 'Bosnia-Herzegovina', 'Bosnia and Herzegowina': 'Bosnia-Herzegovina',
+  "Côte d'Ivoire": 'Ivory Coast', "Cote d'Ivoire": 'Ivory Coast', 'Cote dIvoire': 'Ivory Coast', 'Ivory Coast': 'Ivory Coast',
   'Türkiye': 'Turkey', 'Turkiye': 'Turkey',
   'Curaçao': 'Curacao',
-  'Congo DR': 'DR Congo', 'Democratic Republic of Congo': 'DR Congo', 'Congo, DR': 'DR Congo',
+  'Congo DR': 'DR Congo', 'Democratic Republic of Congo': 'DR Congo', 'Congo, DR': 'DR Congo', 'Congo (DR)': 'DR Congo', 'Democratic Republic of the Congo': 'DR Congo',
   'Cabo Verde': 'Cape Verde',
   'IR Iran': 'Iran', 'Islamic Republic of Iran': 'Iran',
-  'United States': 'USA', 'United States of America': 'USA', 'USA': 'USA',
+  'United States': 'USA', 'United States of America': 'USA',
   'Czech Republic': 'Czechia',
-  'Scotland': 'Scotland', 'England': 'England',
+  'Holland': 'Netherlands',
+  'KSA': 'Saudi Arabia',
+  'RSA': 'South Africa',
 }
 
 function normTeam(name) {
