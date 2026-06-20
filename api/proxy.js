@@ -144,19 +144,25 @@ export default async function handler(req, res) {
       const WC_TEAMS = new Set(CANONICAL_TEAMS)
       const unrecognised = new Set()
 
+      const statusCounts = {}
+      let finishedNoWinnerCount = 0
+
       const matches = rawMatches.map(m => {
         const rawHome = m.homeTeam?.name || m.homeTeam?.shortName || ''
         const rawAway = m.awayTeam?.name || m.awayTeam?.shortName || ''
         const team1 = normTeam(rawHome)
         const team2 = normTeam(rawAway)
-        const status = m.status
-        const live = status === 'LIVE' || status === 'IN_PLAY' || status === 'PAUSED'
-        const finished = status === 'FINISHED'
+        const status = (m.status || '').toUpperCase()
+        statusCounts[status] = (statusCounts[status] || 0) + 1
+        const live = ['LIVE', 'IN_PLAY', 'PAUSED'].includes(status)
+        const finished = ['FINISHED', 'AWARDED'].includes(status)
+        const scoreWinner = m.score?.winner // 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
         const winner = finished
-          ? (m.score?.winner === 'HOME_TEAM' ? team1
-            : m.score?.winner === 'AWAY_TEAM' ? team2
-            : null)
+          ? (scoreWinner === 'HOME_TEAM' ? team1
+            : scoreWinner === 'AWAY_TEAM' ? team2
+            : null) // DRAW or missing winner field — no payout, but still "finished"
           : null
+        if (finished && !winner) finishedNoWinnerCount++
 
         // Track unrecognised names — store the EXACT raw string so it can be mapped
         if (rawHome && !WC_TEAMS.has(team1)) unrecognised.add(rawHome)
@@ -166,7 +172,7 @@ export default async function handler(req, res) {
           team1, team2,
           stage: mapStage(m.stage, m.group),
           date: m.utcDate || new Date().toISOString(),
-          live, winner,
+          live, finished, winner,
         }
       }).filter(m => m.team1 && m.team2 && WC_TEAMS.has(m.team1) && WC_TEAMS.has(m.team2))
 
@@ -174,6 +180,8 @@ export default async function handler(req, res) {
         matches,
         unrecognised: [...unrecognised],
         totalReturned: rawMatches.length,
+        statusCounts,        // e.g. { SCHEDULED: 50, FINISHED: 14, DRAW... }
+        finishedNoWinnerCount, // finished matches with no winner (draws or missing data)
       })
 
     } catch (e) {

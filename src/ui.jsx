@@ -265,11 +265,13 @@ export function MatchCard({ match, assignments, playerColor, myName, onRemove })
   const t2 = TEAM_MAP[match.team2] || { name:match.team2, flag:'🏴' }
   const bet = findMicroBet(assignments, match)
   const stage = STAGES.find(s => s.key === match.stage)
-  const done = !!match.winner
+  // "finished" = full-time, whether or not there's a winner (draws have no winner but ARE finished)
+  const finished = match.finished ?? !!match.winner
+  const isDraw = finished && !match.winner
 
   const isMine = bet && (bet.owner1 === myName || bet.owner2 === myName)
-  const iWin = done && bet && bet.winnerId === myName
-  const iLose = done && bet && bet.winnerId && bet.winnerId !== myName
+  const iWin = finished && bet && bet.winnerId === myName
+  const iLose = finished && bet && bet.winnerId && bet.winnerId !== myName
 
   return (
     <div style={{
@@ -284,8 +286,8 @@ export function MatchCard({ match, assignments, playerColor, myName, onRemove })
           <Badge color='#8A9AB0'>{stage?.shortLabel || '?'}</Badge>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             {match.live && <LiveDot />}
-            {done && !match.live && <span style={{ fontSize:10, color:'var(--green)', fontFamily:'var(--fd)', fontWeight:700, letterSpacing:'0.1em' }}>FT</span>}
-            {!done && !match.live && match.date && (
+            {finished && !match.live && <span style={{ fontSize:10, color:'var(--green)', fontFamily:'var(--fd)', fontWeight:700, letterSpacing:'0.1em' }}>{isDraw ? 'FT · DRAW' : 'FT'}</span>}
+            {!finished && !match.live && match.date && (
               <span style={{ fontSize:10, color:'var(--dim)', fontFamily:'var(--fb)' }}>
                 {new Date(match.date).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}
               </span>
@@ -296,11 +298,11 @@ export function MatchCard({ match, assignments, playerColor, myName, onRemove })
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <div style={{ flex:1, display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:26 }}>{t1.flag}</span>
-            <span style={{ fontFamily:'var(--fd)', fontWeight:700, fontSize:17, color: done && match.winner===match.team1 ? 'var(--gold)' : 'var(--text)' }}>{match.team1}</span>
+            <span style={{ fontFamily:'var(--fd)', fontWeight:700, fontSize:17, color: match.winner===match.team1 ? 'var(--gold)' : 'var(--text)' }}>{match.team1}</span>
           </div>
           <div style={{ padding:'4px 8px', background:'var(--surface2)', borderRadius:6, fontFamily:'var(--fd)', fontWeight:800, fontSize:11, color:'var(--dim)', letterSpacing:'0.12em' }}>VS</div>
           <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end' }}>
-            <span style={{ fontFamily:'var(--fd)', fontWeight:700, fontSize:17, textAlign:'right', color: done && match.winner===match.team2 ? 'var(--gold)' : 'var(--text)' }}>{match.team2}</span>
+            <span style={{ fontFamily:'var(--fd)', fontWeight:700, fontSize:17, textAlign:'right', color: match.winner===match.team2 ? 'var(--gold)' : 'var(--text)' }}>{match.team2}</span>
             <span style={{ fontSize:26 }}>{t2.flag}</span>
           </div>
         </div>
@@ -315,10 +317,12 @@ export function MatchCard({ match, assignments, playerColor, myName, onRemove })
             </div>
             <div style={{ textAlign:'right', flexShrink:0, marginLeft:8 }}>
               <div style={{ fontFamily:'var(--fd)', fontWeight:900, fontSize:20, letterSpacing:'-0.02em', color: iWin ? 'var(--green)' : iLose ? 'var(--red)' : 'var(--gold)' }}>£{bet.betAmt}</div>
-              {done && bet.winnerId && (
-                <div style={{ fontSize:10, color: iWin ? 'var(--green)' : 'var(--red)', fontFamily:'var(--fd)', fontWeight:700 }}>
-                  {iWin ? '↑ YOU WIN' : `→ ${bet.winnerId} wins`}
-                </div>
+              {finished && (
+                bet.winnerId
+                  ? <div style={{ fontSize:10, color: iWin ? 'var(--green)' : 'var(--red)', fontFamily:'var(--fd)', fontWeight:700 }}>
+                      {iWin ? '↑ YOU WIN' : `→ ${bet.winnerId} wins`}
+                    </div>
+                  : <div style={{ fontSize:10, color:'var(--dim)', fontFamily:'var(--fd)', fontWeight:700 }}>DRAW · NO PAYOUT</div>
               )}
             </div>
           </div>

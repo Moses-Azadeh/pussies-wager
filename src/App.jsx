@@ -362,17 +362,21 @@ export default function App() {
       const result = await fetchLiveMatches()
       const raw = Array.isArray(result?.matches) ? result.matches : []
       const proxyUnrecognised = Array.isArray(result?.unrecognised) ? result.unrecognised : []
+      const statusCounts = result?.statusCounts || {}
+      const finishedNoWinnerCount = result?.finishedNoWinnerCount || 0
       if (raw.length === 0) {
-        setLiveMsg('No matches returned — the tournament data may not be available yet, or check the API key in settings.')
+        const statusDump = Object.entries(statusCounts).map(([k,v])=>`${k}:${v}`).join(' ')
+        setLiveMsg(`No matches returned — the tournament data may not be available yet, or check the API key in settings.${statusDump ? ` (statuses seen: ${statusDump})` : ''}`)
         setFetchingLive(false)
         return
       }
       const safe = raw.map(m => ({
         ...m,
-        id:     m.id || `live-${normalise(m.team1)}-${normalise(m.team2)}-${m.stage}`,
-        team1:  normalise(m.team1),
-        team2:  normalise(m.team2),
-        winner: m.live ? null : (m.winner ? normalise(m.winner) : null),
+        id:       m.id || `live-${normalise(m.team1)}-${normalise(m.team2)}-${m.stage}`,
+        team1:    normalise(m.team1),
+        team2:    normalise(m.team2),
+        finished: !!m.finished, // true once full-time/awarded — even for a draw with no winner
+        winner:   m.live ? null : (m.winner ? normalise(m.winner) : null),
       }))
       // Check for still-unrecognised teams after normalisation
       const stillUnrecognised = safe
@@ -381,10 +385,12 @@ export default function App() {
         .filter((v, i, a) => a.indexOf(v) === i) // unique
       const unrecognised = [...new Set([...(proxyUnrecognised || []), ...stillUnrecognised])]
       await push({ liveMatches: safe, lastLiveFetch: new Date().toISOString() })
-      const done = safe.filter(m => m.winner).length
+      const finishedCount = safe.filter(m => m.finished).length
+      const withWinner = safe.filter(m => m.winner).length
+      const drawnCount = safe.filter(m => m.finished && !m.winner).length
       const live = safe.filter(m => m.live).length
       const withBets = safe.filter(m => findMicroBet(gameRef.current?.assignments || {}, m)).length
-      let msg = `✓ ${safe.length} matches — ${done} finished · ${live} live · ${withBets} with wagers`
+      let msg = `✓ ${safe.length} matches — ${finishedCount} finished (${withWinner} decided, ${drawnCount} drawn) · ${live} live · ${withBets} with wagers`
       if (unrecognised && unrecognised.length > 0) msg += ` · ⚠ Unrecognised names: ${unrecognised.join(' | ')}`
       setLiveMsg(msg)
     } catch (e) {
@@ -398,7 +404,7 @@ export default function App() {
     ...(game?.liveMatches || []).map(m => ({ ...m, source:'live' })),
     ...(game?.matches || []).filter(m =>
       !(game?.liveMatches || []).some(lm => lm.team1 === m.team1 && lm.team2 === m.team2)
-    ),
+    ).map(m => ({ ...m, finished: m.finished ?? Boolean(m.winner), source:'manual' })),
   ]
 
   const leaderboard  = game ? calcLeaderboard(game.players, game.assignments, allMatches) : {}
@@ -818,9 +824,9 @@ export default function App() {
                     No clashes yet for this stage. They appear once assigned teams are drawn against each other.
                   </div>
                 }
-                // settled (has winner) first, then upcoming
-                const settled = filtered.filter(({match})=>match.winner)
-                const pending = filtered.filter(({match})=>!match.winner)
+                // settled (finished, win/loss OR draw) first, then upcoming/live
+                const settled = filtered.filter(({match})=>match.finished)
+                const pending = filtered.filter(({match})=>!match.finished)
                 const Row = ({match, bet}, i) => {
                   const w = match.winner
                   const o1won = w && w===bet.team1
@@ -834,7 +840,7 @@ export default function App() {
                           letterSpacing:'0.1em', color:'var(--dim)', textTransform:'uppercase' }}>
                           {STAGES.find(s=>s.key===match.stage)?.shortLabel||match.stage} · £{bet.betAmt.toFixed(2)}
                         </span>
-                        {w
+                        {match.finished
                           ? <span style={{ fontSize:10, fontFamily:'var(--fd)', fontWeight:800, color:'var(--green)' }}>SETTLED</span>
                           : match.live
                             ? <span style={{ fontSize:10, fontFamily:'var(--fd)', fontWeight:800, color:'var(--gold)' }}>LIVE</span>
@@ -849,7 +855,7 @@ export default function App() {
                           <span style={{ color:'var(--dim)', fontSize:11 }}>({bet.owner2})</span> {bet.team2}
                         </span>
                       </div>
-                      {w && <div style={{ marginTop:6, fontSize:11, color:'var(--mid)' }}>
+                      {match.finished && <div style={{ marginTop:6, fontSize:11, color:'var(--mid)' }}>
                         {o1won ? `${bet.owner1} wins £${bet.betAmt.toFixed(2)} from ${bet.owner2}`
                           : o2won ? `${bet.owner2} wins £${bet.betAmt.toFixed(2)} from ${bet.owner1}`
                           : 'Draw — no payout'}
