@@ -38,20 +38,75 @@ const TEAM_NAME_MAP = {
   'RSA': 'South Africa',
 }
 
-function normTeam(name) {
-  return TEAM_NAME_MAP[name] || name
+// Canonical team list — the single source of truth
+const CANONICAL_TEAMS = [
+  "Mexico","South Africa","South Korea","Czechia",
+  "Canada","Bosnia-Herzegovina","Qatar","Switzerland",
+  "Brazil","Morocco","Haiti","Scotland",
+  "USA","Paraguay","Australia","Turkey",
+  "Germany","Curacao","Ivory Coast","Ecuador",
+  "Netherlands","Japan","Sweden","Tunisia",
+  "Belgium","Egypt","Iran","New Zealand",
+  "Spain","Cape Verde","Saudi Arabia","Uruguay",
+  "France","Senegal","Iraq","Norway",
+  "Argentina","Algeria","Austria","Jordan",
+  "Portugal","DR Congo","Uzbekistan","Colombia",
+  "England","Croatia","Ghana","Panama"
+]
+
+// Strip accents, lowercase, remove punctuation — for fuzzy matching
+function fuzzyKey(s) {
+  return (s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '') // remove spaces, hyphens, punctuation
 }
 
-// Map football-data.org round names to our stage keys
-function mapStage(round) {
-  if (!round) return 'gs'
-  const r = round.toLowerCase()
-  if (r.includes('group')) return 'gs'
-  if (r.includes('round of 32') || r.includes('round of thirty-two')) return 'r32'
-  if (r.includes('round of 16') || r.includes('round of sixteen') || r.includes('last 16')) return 'r16'
-  if (r.includes('quarter')) return 'qf'
-  if (r.includes('semi')) return 'sf'
-  if (r.includes('final') && !r.includes('semi') && !r.includes('quarter')) return 'f'
+// Build a fuzzy lookup from canonical names + all known aliases
+const FUZZY_LOOKUP = {}
+CANONICAL_TEAMS.forEach(t => { FUZZY_LOOKUP[fuzzyKey(t)] = t })
+Object.entries(TEAM_NAME_MAP).forEach(([variant, canonical]) => {
+  FUZZY_LOOKUP[fuzzyKey(variant)] = canonical
+})
+// Extra fuzzy aliases that punctuation-stripping alone won't catch
+const EXTRA_FUZZY = {
+  'korearepublic': 'South Korea', 'republicofkorea': 'South Korea', 'southkorea': 'South Korea',
+  'czechrepublic': 'Czechia',
+  'unitedstates': 'USA', 'unitedstatesofamerica': 'USA', 'usa': 'USA', 'usmnt': 'USA',
+  'caboverde': 'Cape Verde',
+  'congodr': 'DR Congo', 'drcongo': 'DR Congo', 'democraticrepublicofcongo': 'DR Congo', 'democraticrepublicofthecongo': 'DR Congo',
+  'cotedivoire': 'Ivory Coast', 'ivorycoast': 'Ivory Coast',
+  'bosniaandherzegovina': 'Bosnia-Herzegovina', 'bosniaherzegovina': 'Bosnia-Herzegovina',
+  'turkiye': 'Turkey', 'turkey': 'Turkey',
+  'iriran': 'Iran', 'islamicrepublicofiran': 'Iran',
+}
+Object.entries(EXTRA_FUZZY).forEach(([k, v]) => { FUZZY_LOOKUP[k] = v })
+
+function normTeam(name) {
+  if (!name) return ''
+  // 1. Exact alias match
+  if (TEAM_NAME_MAP[name]) return TEAM_NAME_MAP[name]
+  // 2. Exact canonical match
+  if (CANONICAL_TEAMS.includes(name)) return name
+  // 3. Fuzzy match (accent/case/punctuation-insensitive)
+  const fk = fuzzyKey(name)
+  if (FUZZY_LOOKUP[fk]) return FUZZY_LOOKUP[fk]
+  // 4. No match — return original so it's flagged
+  return name
+}
+
+// Map football-data.org stage enum to our stage keys
+// football-data.org uses: GROUP_STAGE, LAST_16, QUARTER_FINALS, SEMI_FINALS, FINAL
+// (the 2026 format also has a round of 32 — may appear as ROUND_OF_32 or LAST_32)
+function mapStage(stage, group) {
+  const s = (stage || '').toUpperCase()
+  if (s.includes('GROUP') || group) return 'gs'
+  if (s.includes('LAST_32') || s.includes('ROUND_OF_32') || s.includes('32')) return 'r32'
+  if (s.includes('LAST_16') || s.includes('ROUND_OF_16') || s.includes('16')) return 'r16'
+  if (s.includes('QUARTER')) return 'qf'
+  if (s.includes('SEMI')) return 'sf'
+  if (s.includes('FINAL') && !s.includes('SEMI') && !s.includes('QUARTER')) return 'f'
+  if (s.includes('3RD') || s.includes('THIRD')) return 'sf' // third-place playoff → treat as SF-level
   return 'gs'
 }
 
@@ -84,28 +139,14 @@ export default async function handler(req, res) {
       }
 
       const data = await response.json()
-      const rawMatches = data.matches || []
+      const rawMatches = Array.isArray(data.matches) ? data.matches : []
 
-      const WC_TEAMS = new Set([
-        "Mexico","South Africa","South Korea","Czechia",
-        "Canada","Bosnia-Herzegovina","Qatar","Switzerland",
-        "Brazil","Morocco","Haiti","Scotland",
-        "USA","Paraguay","Australia","Turkey",
-        "Germany","Curacao","Ivory Coast","Ecuador",
-        "Netherlands","Japan","Sweden","Tunisia",
-        "Belgium","Egypt","Iran","New Zealand",
-        "Spain","Cape Verde","Saudi Arabia","Uruguay",
-        "France","Senegal","Iraq","Norway",
-        "Argentina","Algeria","Austria","Jordan",
-        "Portugal","DR Congo","Uzbekistan","Colombia",
-        "England","Croatia","Ghana","Panama"
-      ])
-
+      const WC_TEAMS = new Set(CANONICAL_TEAMS)
       const unrecognised = new Set()
 
       const matches = rawMatches.map(m => {
-        const rawHome = m.homeTeam?.name || ''
-        const rawAway = m.awayTeam?.name || ''
+        const rawHome = m.homeTeam?.name || m.homeTeam?.shortName || ''
+        const rawAway = m.awayTeam?.name || m.awayTeam?.shortName || ''
         const team1 = normTeam(rawHome)
         const team2 = normTeam(rawAway)
         const status = m.status
@@ -117,21 +158,22 @@ export default async function handler(req, res) {
             : null)
           : null
 
-        // Track unrecognised names
-        if (rawHome && !WC_TEAMS.has(team1)) unrecognised.add(`"${rawHome}" → "${team1}"`)
-        if (rawAway && !WC_TEAMS.has(team2)) unrecognised.add(`"${rawAway}" → "${team2}"`)
+        // Track unrecognised names — store the EXACT raw string so it can be mapped
+        if (rawHome && !WC_TEAMS.has(team1)) unrecognised.add(rawHome)
+        if (rawAway && !WC_TEAMS.has(team2)) unrecognised.add(rawAway)
 
         return {
           team1, team2,
-          stage: mapStage(m.stage || m.group || ''),
+          stage: mapStage(m.stage, m.group),
           date: m.utcDate || new Date().toISOString(),
           live, winner,
         }
-      }).filter(m => m.team1 && m.team2)
+      }).filter(m => m.team1 && m.team2 && WC_TEAMS.has(m.team1) && WC_TEAMS.has(m.team2))
 
       return res.status(200).json({
         matches,
         unrecognised: [...unrecognised],
+        totalReturned: rawMatches.length,
       })
 
     } catch (e) {

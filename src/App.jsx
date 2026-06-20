@@ -359,9 +359,17 @@ export default function App() {
     setFetchingLive(true)
     setLiveMsg('Searching for World Cup matches…')
     try {
-      const { matches: raw, unrecognised: proxyUnrecognised } = await fetchLiveMatches()
+      const result = await fetchLiveMatches()
+      const raw = Array.isArray(result?.matches) ? result.matches : []
+      const proxyUnrecognised = Array.isArray(result?.unrecognised) ? result.unrecognised : []
+      if (raw.length === 0) {
+        setLiveMsg('No matches returned — the tournament data may not be available yet, or check the API key in settings.')
+        setFetchingLive(false)
+        return
+      }
       const safe = raw.map(m => ({
         ...m,
+        id:     m.id || `live-${normalise(m.team1)}-${normalise(m.team2)}-${m.stage}`,
         team1:  normalise(m.team1),
         team2:  normalise(m.team2),
         winner: m.live ? null : (m.winner ? normalise(m.winner) : null),
@@ -766,7 +774,7 @@ export default function App() {
               </div>
 
               <Tabs
-                tabs={[['wagers','⚡ Mine'],['myteams','🏆 Teams'],['debts','💸 Debts'],['table','📊 Table']]}
+                tabs={[['wagers','⚡ Mine'],['allbets','🌍 All'],['myteams','🏆 Teams'],['debts','💸 Debts'],['table','📊 Table']]}
                 active={tab} onChange={setTab} />
 
               {/* Stage filter — shared across wager tabs */}
@@ -801,6 +809,67 @@ export default function App() {
                           assignments={game.assignments} playerColor={getColor} myName={myName} />
                       ))
               )}
+
+              {/* All Clashes — every micro-bet across the whole group */}
+              {tab==='allbets' && (() => {
+                const filtered = allBets.filter(({match})=>stageFilter==='all'||match.stage===stageFilter)
+                if (filtered.length === 0) {
+                  return <div style={{ padding:'32px 20px', textAlign:'center', color:'var(--dim)', fontSize:13, lineHeight:1.6 }}>
+                    No clashes yet for this stage. They appear once assigned teams are drawn against each other.
+                  </div>
+                }
+                // settled (has winner) first, then upcoming
+                const settled = filtered.filter(({match})=>match.winner)
+                const pending = filtered.filter(({match})=>!match.winner)
+                const Row = ({match, bet}, i) => {
+                  const w = match.winner
+                  const o1won = w && w===bet.team1
+                  const o2won = w && w===bet.team2
+                  return (
+                    <div key={(match.id||i)+'-'+bet.owner1+'-'+bet.owner2} style={{
+                      padding:'12px 14px', borderRadius:11, marginBottom:6,
+                      background:'var(--surface)', border:'1px solid var(--border)' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                        <span style={{ fontSize:10, fontFamily:'var(--fd)', fontWeight:700,
+                          letterSpacing:'0.1em', color:'var(--dim)', textTransform:'uppercase' }}>
+                          {STAGES.find(s=>s.key===match.stage)?.shortLabel||match.stage} · £{bet.betAmt.toFixed(2)}
+                        </span>
+                        {w
+                          ? <span style={{ fontSize:10, fontFamily:'var(--fd)', fontWeight:800, color:'var(--green)' }}>SETTLED</span>
+                          : match.live
+                            ? <span style={{ fontSize:10, fontFamily:'var(--fd)', fontWeight:800, color:'var(--gold)' }}>LIVE</span>
+                            : <span style={{ fontSize:10, fontFamily:'var(--fd)', fontWeight:700, color:'var(--dim)' }}>UPCOMING</span>}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13 }}>
+                        <span style={{ flex:1, fontWeight: o1won?800:500, color:o1won?'var(--green)':'var(--text)' }}>
+                          {bet.team1} <span style={{ color:'var(--dim)', fontSize:11 }}>({bet.owner1})</span>
+                        </span>
+                        <span style={{ color:'var(--dim)', fontSize:11 }}>v</span>
+                        <span style={{ flex:1, textAlign:'right', fontWeight: o2won?800:500, color:o2won?'var(--green)':'var(--text)' }}>
+                          <span style={{ color:'var(--dim)', fontSize:11 }}>({bet.owner2})</span> {bet.team2}
+                        </span>
+                      </div>
+                      {w && <div style={{ marginTop:6, fontSize:11, color:'var(--mid)' }}>
+                        {o1won ? `${bet.owner1} wins £${bet.betAmt.toFixed(2)} from ${bet.owner2}`
+                          : o2won ? `${bet.owner2} wins £${bet.betAmt.toFixed(2)} from ${bet.owner1}`
+                          : 'Draw — no payout'}
+                      </div>}
+                    </div>
+                  )
+                }
+                return (
+                  <div>
+                    {settled.length>0 && <div style={{ fontFamily:'var(--fd)', fontWeight:800, fontSize:11,
+                      letterSpacing:'0.14em', color:'var(--mid)', textTransform:'uppercase', margin:'4px 0 10px' }}>
+                      Settled ({settled.length})</div>}
+                    {settled.map(Row)}
+                    {pending.length>0 && <div style={{ fontFamily:'var(--fd)', fontWeight:800, fontSize:11,
+                      letterSpacing:'0.14em', color:'var(--mid)', textTransform:'uppercase', margin:'14px 0 10px' }}>
+                      Upcoming ({pending.length})</div>}
+                    {pending.map(Row)}
+                  </div>
+                )
+              })()}
 
               {/* My Teams */}
               {tab==='myteams' && (
