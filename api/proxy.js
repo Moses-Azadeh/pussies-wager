@@ -129,7 +129,7 @@ export default async function handler(req, res) {
 
     try {
       // FIFA World Cup 2026 competition code is WC, season 2026
-      const response = await fetch('https://api.football-data.org/v4/competitions/WC/matches?season=2026', {
+      const response = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
         headers: { 'X-Auth-Token': FOOTBALL_KEY }
       })
 
@@ -140,6 +140,8 @@ export default async function handler(req, res) {
 
       const data = await response.json()
       const rawMatches = Array.isArray(data.matches) ? data.matches : []
+      const apiFilters = data.filters || null
+      const apiResultSet = data.resultSet || null
 
       const WC_TEAMS = new Set(CANONICAL_TEAMS)
       const unrecognised = new Set()
@@ -182,6 +184,8 @@ export default async function handler(req, res) {
         totalReturned: rawMatches.length,
         statusCounts,        // e.g. { SCHEDULED: 50, FINISHED: 14, DRAW... }
         finishedNoWinnerCount, // finished matches with no winner (draws or missing data)
+        apiFilters,   // exactly what football-data.org applied (season, competitions etc)
+        apiResultSet, // their count/first/last/played summary
       })
 
     } catch (e) {

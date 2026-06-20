@@ -366,7 +366,13 @@ export default function App() {
       const finishedNoWinnerCount = result?.finishedNoWinnerCount || 0
       if (raw.length === 0) {
         const statusDump = Object.entries(statusCounts).map(([k,v])=>`${k}:${v}`).join(' ')
-        setLiveMsg(`No matches returned — the tournament data may not be available yet, or check the API key in settings.${statusDump ? ` (statuses seen: ${statusDump})` : ''}`)
+        const filtersDump = result?.apiFilters ? JSON.stringify(result.apiFilters) : null
+        const resultSetDump = result?.apiResultSet ? JSON.stringify(result.apiResultSet) : null
+        let msg = 'No matches returned — the tournament data may not be available yet, or check the API key in settings.'
+        if (statusDump) msg += ` (statuses seen: ${statusDump})`
+        if (filtersDump) msg += ` · filters applied: ${filtersDump}`
+        if (resultSetDump) msg += ` · resultSet: ${resultSetDump}`
+        setLiveMsg(msg)
         setFetchingLive(false)
         return
       }
