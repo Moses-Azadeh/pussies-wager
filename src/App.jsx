@@ -182,6 +182,7 @@ export default function App() {
   const [matchForm, setMatchForm]     = useState({ team1:'', team2:'', stage:'gs', winner:'' })
   const [fetchingLive, setFetchingLive] = useState(false)
   const [liveMsg, setLiveMsg]           = useState('')
+  const [debugRaw, setDebugRaw]         = useState(null)
   const [confirm, setConfirm]           = useState(null)
   const [showDraftHistory, setShowDraftHistory] = useState(false)
   const [offlineWarning, setOfflineWarning]     = useState(false)
@@ -358,21 +359,16 @@ export default function App() {
   const handleFetchLive = async () => {
     setFetchingLive(true)
     setLiveMsg('Searching for World Cup matches…')
+    setDebugRaw(null)
     try {
       const result = await fetchLiveMatches()
       const raw = Array.isArray(result?.matches) ? result.matches : []
       const proxyUnrecognised = Array.isArray(result?.unrecognised) ? result.unrecognised : []
-      const statusCounts = result?.statusCounts || {}
-      const finishedNoWinnerCount = result?.finishedNoWinnerCount || 0
+      // Always capture the full raw passthrough so it can be inspected directly —
+      // no more guessing at what the API sent back.
+      setDebugRaw(result?.debugRaw || { note: 'No debugRaw field in response — proxy may be an old deployed version', fullResult: result })
       if (raw.length === 0) {
-        const statusDump = Object.entries(statusCounts).map(([k,v])=>`${k}:${v}`).join(' ')
-        const filtersDump = result?.apiFilters ? JSON.stringify(result.apiFilters) : null
-        const resultSetDump = result?.apiResultSet ? JSON.stringify(result.apiResultSet) : null
-        let msg = 'No matches returned — the tournament data may not be available yet, or check the API key in settings.'
-        if (statusDump) msg += ` (statuses seen: ${statusDump})`
-        if (filtersDump) msg += ` · filters applied: ${filtersDump}`
-        if (resultSetDump) msg += ` · resultSet: ${resultSetDump}`
-        setLiveMsg(msg)
+        setLiveMsg('No matches returned. See raw response below for exactly what football-data.org sent back.')
         setFetchingLive(false)
         return
       }
@@ -1104,6 +1100,20 @@ export default function App() {
                 {liveMsg && (
                   <div style={{ fontSize:11, color:'var(--accent)', marginTop:10,
                     fontFamily:'var(--fd)', fontWeight:600, lineHeight:1.5 }}>{liveMsg}</div>
+                )}
+                {debugRaw && (
+                  <div style={{ marginTop:12 }}>
+                    <div style={{ fontSize:10, color:'var(--dim)', fontFamily:'var(--fd)',
+                      fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:6 }}>
+                      Raw API Response (unmodified — screenshot this)
+                    </div>
+                    <pre style={{
+                      background:'#000', border:'1px solid var(--border)', borderRadius:8,
+                      padding:'10px 12px', fontSize:10, lineHeight:1.5, color:'#8AFF8A',
+                      overflowX:'auto', maxHeight:280, overflowY:'auto',
+                      whiteSpace:'pre-wrap', wordBreak:'break-word', userSelect:'text',
+                    }}>{JSON.stringify(debugRaw, null, 2)}</pre>
+                  </div>
                 )}
               </Card>
 

@@ -186,6 +186,19 @@ export default async function handler(req, res) {
         finishedNoWinnerCount, // finished matches with no winner (draws or missing data)
         apiFilters,   // exactly what football-data.org applied (season, competitions etc)
         apiResultSet, // their count/first/last/played summary
+        // Full unmodified passthrough — the actual bytes football-data.org sent back.
+        // Truncated to the first 2 raw match objects (if any) plus everything else,
+        // so the whole response can be inspected without guessing what's in it.
+        debugRaw: {
+          httpStatus: response.status,
+          topLevelKeys: Object.keys(data),
+          count: data.count ?? null,
+          filters: data.filters ?? null,
+          resultSet: data.resultSet ?? null,
+          competition: data.competition ?? null,
+          rawMatchCount: rawMatches.length,
+          sampleRawMatches: rawMatches.slice(0, 2),
+        },
       })
 
     } catch (e) {
